@@ -39,7 +39,7 @@ export default async function handler(
       .newTx()
       .pay.ToAddress(
         "addr_test1qqr585tvlc7ylnqvz8pyqwauzrdu0mxag3m7q56grgmgu7sxu2hyfhlkwuxupa9d5085eunq2qywy7hvmvej456flknswgndm3", // Testnet Faucet Return Address
-        { lovelace: BigInt(10_000_000) } // 10 Ada = 10_000_000 lovelace
+        { lovelace: 10_000_000n } // 10 Ada = 10_000_000 lovelace
       )
       .complete();
 
