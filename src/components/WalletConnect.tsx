@@ -1,30 +1,68 @@
 "use client";
-import { useCardano } from "@cardano-foundation/cardano-connect-with-wallet";
-import { NetworkType } from "@cardano-foundation/cardano-connect-with-wallet-core";
-import { useState } from "react";
+import { useWalletContext } from "@/context/WalletContext";
+import { useWallet } from "@/hooks/useWallet";
+import { Lucid } from "@lucid-evolution/lucid";
+import { Key, useCallback, useEffect, useRef, useState } from "react";
 
 export default function WalletConnect() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { isConnected, stakeAddress, disconnect, accountBalance, initLucid, connect, installedExtensions } = useWallet();
+  // const [isModalOpen, setIsModalOpen] = useState(false);
+  const [lucidInstance, setLucidInstance] = useState<Awaited<ReturnType<typeof Lucid>> | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const hasLoggedAddress = useRef(false);
+  const [showCopied, setShowCopied] = useState(false);
+  const { isModalOpen, setIsModalOpen } = useWalletContext();
+  console.log("WalletConnect: isModalOpen =", isModalOpen);
+  console.log("WalletConnect: isConnected =", isConnected);
 
-  const network =
-    process.env.NODE_ENV === "development"
-      ? NetworkType.TESTNET
-      : NetworkType.MAINNET;
+  // const network =
+  //   process.env.NODE_ENV === "development"
+  //     ? NetworkType.TESTNET
+  //     : NetworkType.MAINNET;
 
-  const {
-    isConnected,
-    stakeAddress,
-    disconnect,
-    accountBalance,
-    connect,
-    installedExtensions,
-  } = useCardano({
-    limitNetwork: network,
-  });
+  // const {
+  //   isConnected,
+  //   stakeAddress,
+  //   disconnect,
+  //   accountBalance,
+  //   connect,
+  //   installedExtensions,
+  // } = useCardano({
+  //   limitNetwork: network,
+  // });
+
+  const initialize = useCallback(async () => {
+    try {
+      const instance = await initLucid();
+      if (instance) {
+        setLucidInstance(instance);
+      }
+    } catch (error) {
+      console.error("Error initializing Lucid:", error);
+    }
+  }, [initLucid, walletAddress]);
+
+  useEffect(() => {
+    if (isConnected) {
+      initialize();
+    } else {
+      setWalletAddress(null);
+      setLucidInstance(null);
+      hasLoggedAddress.current = false;
+    }
+  }, [isConnected, initialize]);
+
+  const handleCopy = async () => {
+    if (stakeAddress) {
+      await navigator.clipboard.writeText(stakeAddress);
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="w-full">
-      {isConnected ? (
+      {isConnected && (
         <div className="px-5 py-4">
           <div className="flex flex-col space-y-4">
             <div className="grid grid-cols-[auto_1fr] gap-y-3 gap-x-10">
@@ -40,23 +78,7 @@ export default function WalletConnect() {
                 {accountBalance} ₳
               </div>
             </div>
-
-            <button
-              className="w-full py-2 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 rounded-md border border-zinc-700/50 text-xs font-medium transition-all focus:outline-none focus:ring-1 focus:ring-zinc-500/30"
-              onClick={() => disconnect()}
-            >
-              Disconnect
-            </button>
           </div>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center px-5 py-8">
-          <button
-            className="w-full max-w-xs py-2.5 bg-red-900/90 hover:bg-red-800 text-zinc-100 rounded-md border border-red-900/60 text-xs font-medium transition-all focus:outline-none focus:ring-1 focus:ring-red-700/30"
-            onClick={() => setIsModalOpen(true)}
-          >
-            Connect Wallet
-          </button>
         </div>
       )}
 
@@ -70,22 +92,6 @@ export default function WalletConnect() {
             </div>
 
             <div className="p-5 space-y-3">
-              <div className="grid gap-2">
-                {installedExtensions.map((provider) => (
-                  <button
-                    key={provider}
-                    className="w-full px-4 py-2.5 bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 rounded-md border border-zinc-700/50 flex items-center justify-between transition-all text-xs font-medium focus:outline-none focus:ring-1 focus:ring-zinc-500/30"
-                    onClick={() => {
-                      connect(provider);
-                      setIsModalOpen(false);
-                    }}
-                  >
-                    <span className="capitalize">
-                      {provider.charAt(0).toUpperCase() + provider.slice(1)}
-                    </span>
-                  </button>
-                ))}
-              </div>
 
               <button
                 className="w-full px-4 py-2 bg-zinc-800/60 text-zinc-300 rounded-md hover:bg-zinc-700 transition-all text-xs border border-zinc-700/40 font-medium focus:outline-none focus:ring-1 focus:ring-zinc-500/30"
